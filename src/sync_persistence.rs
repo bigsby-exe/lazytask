@@ -66,3 +66,36 @@ pub fn save_sync_settings(data_dir: &Path, settings: &SyncSettings) -> Result<()
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn missing_file_returns_none() -> Result<()> {
+        let dir = tempdir()?;
+        assert!(load_sync_settings(dir.path())?.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn credentials_round_trip() -> Result<()> {
+        let dir = tempdir()?;
+        let settings = SyncSettings {
+            server_url: "https://tasks.example.test".to_string(),
+            client_id: "01234567-89ab-cdef-0123-456789abcdef".to_string(),
+            encryption_secret: "test-secret".to_string(),
+            local_server_dir: None,
+        };
+
+        save_sync_settings(dir.path(), &settings)?;
+        let loaded = load_sync_settings(dir.path())?.expect("saved settings should load");
+
+        assert_eq!(loaded.server_url, settings.server_url);
+        assert_eq!(loaded.client_id, settings.client_id);
+        assert_eq!(loaded.encryption_secret, settings.encryption_secret);
+        assert!(loaded.local_server_dir.is_none());
+        Ok(())
+    }
+}
