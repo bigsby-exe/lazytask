@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use std::time::{Duration, Instant};
 use tokio::sync::watch;
 
+use crate::sync_persistence::save_sync_settings;
 use crate::taskchampion::{SyncSettings, TaskChampionIntegration};
 use crate::ui::components::sync_config::{SyncConfig, SyncConfigType};
 
@@ -143,18 +144,20 @@ impl SyncHandler {
     ) -> Result<String> {
         match config.config_type {
             SyncConfigType::Server | SyncConfigType::Local => {
-                taskchampion.configure_sync(SyncSettings {
+                let settings = SyncSettings {
                     server_url: config.server_url.clone(),
                     client_id: config.client_id.clone(),
                     encryption_secret: config.encryption_secret.clone(),
                     local_server_dir: None,
-                })?;
+                };
+                taskchampion.configure_sync(settings.clone())?;
+                save_sync_settings(taskchampion.data_dir(), &settings)?;
                 if let Some(tx) = &self.sync_status_tx {
                     let mut s = tx.borrow().clone();
                     s.server_configured = true;
                     let _ = tx.send(s);
                 }
-                Ok("TaskChampion sync configured".to_string())
+                Ok("TaskChampion sync configured and saved".to_string())
             }
             SyncConfigType::GCP | SyncConfigType::AWS => Err(anyhow::anyhow!(
                 "Cloud sync providers are not yet supported"
