@@ -11,6 +11,7 @@ use std::time::Duration;
 use crate::config::Config;
 use crate::handlers::input::{Action, InputHandler};
 use crate::handlers::sync::SyncHandler;
+use crate::sync_persistence::load_sync_settings;
 use crate::taskchampion::TaskChampionIntegration;
 use crate::ui::app_ui::AppUI;
 
@@ -35,7 +36,10 @@ impl App {
         let terminal = Terminal::new(backend)?;
 
         let config = Config::load(config_path)?;
-        let taskchampion = TaskChampionIntegration::new(None).await?;
+        let mut taskchampion = TaskChampionIntegration::new(None).await?;
+        if let Some(saved_sync) = load_sync_settings(taskchampion.data_dir())? {
+            taskchampion.configure_sync(saved_sync)?;
+        }
         let sync_handler = SyncHandler::new();
         let ui = AppUI::new(&config)?;
         let input_handler = InputHandler::new(&config);
